@@ -143,7 +143,7 @@ body {
     transform: scale(0.97);
 }
 
-/* Вертикальні списки послуг та викладачів */
+/* Вертикальні списки */
 .services-list {
     display: flex;
     flex-direction: column;
@@ -156,6 +156,7 @@ body {
     color: var(--text-secondary);
     padding: 30px 20px;
     font-size: 15px;
+    grid-column: 1 / -1; /* Для коректного відображення по центру у сітці (Grid) */
 }
 
 .service-card {
@@ -178,7 +179,6 @@ body {
     flex-shrink: 0;
 }
 
-/* Сіре коло-заглушка для фото викладача */
 .teacher-avatar {
     width: 56px;
     height: 56px;
@@ -320,15 +320,6 @@ body {
     color: white;
     border-color: var(--accent-color);
     box-shadow: 0 4px 12px rgba(0, 122, 255, 0.3);
-}
-
-.time-btn:disabled {
-    background: transparent;
-    color: #c7c7cc;
-    cursor: not-allowed;
-    border-color: #e5e5ea;
-    box-shadow: none;
-    transform: none;
 }
 
 /* Футер / Кнопка "Забронювати" */
