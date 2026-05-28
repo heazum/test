@@ -10,7 +10,7 @@
 </head>
 <body>
     <div id="app">
-        <!-- Екран 1: Вибір послуги (Статичний) -->
+        <!-- Екран 1: Вибір послуги -->
         <section id="screen-services" class="screen active">
             <header class="main-header">
                 <div class="logo-placeholder">
@@ -21,11 +21,10 @@
             
             <div class="services-container">
                 <div class="services-list" id="services-list">
-                    <!-- Статичні картки послуг -->
                     <div class="card service-card" data-type="lesson">
                         <div class="service-icon">🥁</div>
                         <div class="service-content">
-                            <h3>Урок гри на барабанах</h3>
+                            <h3>Урок</h3>
                             <p>Індивідуальне заняття з викладачем</p>
                         </div>
                     </div>
@@ -33,15 +32,15 @@
                     <div class="card service-card" data-type="rent">
                         <div class="service-icon">🎙️</div>
                         <div class="service-content">
-                            <h3>Оренда студії</h3>
-                            <p>Репетиційна база, самостійна робота</p>
+                            <h3>Оренда</h3>
+                            <p>Самостійне заняття</p>
                         </div>
                     </div>
                 </div>
             </div>
         </section>
 
-        <!-- Екран 2: Вибір спеціаліста (Динамічний, тільки для уроку) -->
+        <!-- Екран 2: Вибір викладача -->
         <section id="screen-specialists" class="screen">
             <header class="nav-header">
                 <div class="header-top">
@@ -54,13 +53,12 @@
                 <h2>Оберіть викладача</h2>
             </header>
             
-            <!-- Контейнер для викладачів (стилізовано як вертикальний список) -->
             <div class="services-list" id="teachers-list">
                 <p class="loading-text">Завантаження викладачів...</p>
             </div>
         </section>
 
-        <!-- Екран 3: Вибір дати та часу (Статичні заглушки) -->
+        <!-- Екран 3: Вибір дати та часу -->
         <section id="screen-datetime" class="screen">
             <header class="nav-header sticky-header">
                 <div class="header-top">
@@ -78,21 +76,12 @@
             <div class="datetime-container">
                 <h3>Оберіть дату</h3>
                 <div class="horizontal-scroll dates-scroll" id="dates-container">
-                    <!-- Динамічні дати генерує JS -->
+                    <!-- Заповнюється динамічно з JS -->
                 </div>
 
                 <h3>Оберіть час</h3>
                 <div class="time-grid" id="time-container">
-                    <!-- Статичні слоти -->
-                    <button class="time-btn" disabled>10:00</button>
-                    <button class="time-btn">11:00</button>
-                    <button class="time-btn">12:00</button>
-                    <button class="time-btn">13:00</button>
-                    <button class="time-btn" disabled>14:00</button>
-                    <button class="time-btn">15:00</button>
-                    <button class="time-btn">16:00</button>
-                    <button class="time-btn">17:00</button>
-                    <button class="time-btn">18:00</button>
+                    <!-- Заповнюється динамічно з бази -->
                 </div>
             </div>
 
@@ -105,10 +94,11 @@
     <!-- JS Логіка -->
     <script>
         document.addEventListener('DOMContentLoaded', () => {
- const supabaseUrl = 'https://whnuwjzqqejcbjmckdgv.supabase.co'; // Вставте ваш Supabase URL
-
-            const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndobnV3anpxcWVqY2JqbWNrZGd2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0ODc3MjIsImV4cCI6MjA5NTA2MzcyMn0.zHxGPSX6QYzCC0UVVSiWZAXqVHPrrcK8CwTUja6teds'; // Вставте ваш Supabase Anon Key
-
+            const supabaseUrl = ''; // Вставте ваш Supabase URL
+            const supabaseKey = ''; // Вставте ваш Supabase Anon Key
+            
+            // Замініть на реальний ID кімнати з таблиці resources для Оренди
+            const RENT_ROOM_ID = 'your_room_id_here'; 
             
             let supabaseClient = null;
             if (supabaseUrl && supabaseKey) {
@@ -119,7 +109,7 @@
                 history: ['screen-services'],
                 booking: {
                     type: null,
-                    teacherId: null,
+                    resourceId: null, // ID викладача або ID кімнати
                     teacherName: null,
                     date: null,
                     time: null
@@ -135,6 +125,7 @@
             const bookBtn = document.getElementById('book-btn');
             const bookingSummary = document.getElementById('booking-summary');
             const datesContainer = document.getElementById('dates-container');
+            const timeContainer = document.getElementById('time-container');
 
             // --- Навігація ---
             function navigateTo(screenId) {
@@ -165,7 +156,7 @@
                 btn.addEventListener('click', goBack);
             });
 
-            // --- Логіка Екрану 1 (Вибір типу) ---
+            // --- Логіка Екрану 1 ---
             document.querySelectorAll('#screen-services .service-card').forEach(card => {
                 card.addEventListener('click', () => {
                     const type = card.dataset.type;
@@ -175,15 +166,16 @@
                         loadTeachers();
                         navigateTo('screen-specialists');
                     } else if (type === 'rent') {
-                        state.booking.teacherId = null;
+                        state.booking.resourceId = RENT_ROOM_ID; 
                         state.booking.teacherName = null;
                         updateSummary();
+                        generateDates();
                         navigateTo('screen-datetime');
                     }
                 });
             });
 
-            // --- Логіка Екрану 2 (Завантаження викладачів з таблиці resources) ---
+            // --- Логіка Екрану 2 ---
             async function loadTeachers() {
                 const teachersList = document.getElementById('teachers-list');
                 teachersList.innerHTML = '<p class="loading-text">Завантаження викладачів...</p>';
@@ -194,7 +186,6 @@
                 }
 
                 try {
-                    // Звертаємось до таблиці resources, фільтруємо за resource_type та is_active
                     const { data: teachers, error } = await supabaseClient
                         .from('resources')
                         .select('*')
@@ -223,9 +214,10 @@
                         `;
 
                         card.addEventListener('click', () => {
-                            state.booking.teacherId = teacher.id;
+                            state.booking.resourceId = teacher.id;
                             state.booking.teacherName = teacher.name || 'Без імені';
                             updateSummary();
+                            generateDates();
                             navigateTo('screen-datetime');
                         });
                         
@@ -233,7 +225,7 @@
                     });
                 } catch (err) {
                     console.error("Помилка завантаження викладачів:", err);
-                    teachersList.innerHTML = '<p class="loading-text">Помилка завантаження. Перевірте мережу та таблицю "resources".</p>';
+                    teachersList.innerHTML = '<p class="loading-text">Помилка завантаження. Перевірте мережу.</p>';
                 }
             }
 
@@ -290,60 +282,115 @@
                         state.booking.date = target.dataset.date;
                         
                         state.booking.time = null;
-                        document.querySelectorAll('.time-btn').forEach(t => t.classList.remove('selected'));
                         updateBookButton();
+                        fetchAvailableSlots(state.booking.date, state.booking.resourceId);
                     });
                 });
+
+                // Завантажуємо слоти для поточного (першого) дня
+                fetchAvailableSlots(state.booking.date, state.booking.resourceId);
             }
 
-            document.querySelectorAll('.time-btn').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    if (e.currentTarget.disabled) return;
-                    document.querySelectorAll('.time-btn').forEach(b => b.classList.remove('selected'));
-                    const target = e.currentTarget;
-                    target.classList.add('selected');
-                    state.booking.time = target.textContent.trim();
-                    updateBookButton();
-                });
-            });
+            // --- Логіка таймслотів (Supabase) ---
+            const ALL_SLOTS = ['10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00'];
+
+            async function fetchAvailableSlots(selectedDate, resourceId) {
+                timeContainer.innerHTML = '<p class="loading-text" style="grid-column: 1 / -1;">Перевірка розкладу...</p>';
+
+                if (!supabaseClient || !resourceId) {
+                    timeContainer.innerHTML = '<p class="loading-text" style="grid-column: 1 / -1;">Не вдалося завантажити слоти (відсутні ключі або ресурс).</p>';
+                    return;
+                }
+
+                try {
+                    const { data: bookings, error } = await supabaseClient
+                        .from('bookings')
+                        .select('start_time')
+                        .eq('booking_date', selectedDate)
+                        .eq('resource_id', resourceId);
+
+                    if (error) throw error;
+
+                    // Якщо база повертає час у форматі "10:00:00", обрізаємо до "10:00"
+                    const bookedTimes = bookings.map(b => b.start_time.substring(0, 5));
+
+                    // Відфільтровуємо зайняті години
+                    const availableSlots = ALL_SLOTS.filter(slot => !bookedTimes.includes(slot));
+
+                    timeContainer.innerHTML = '';
+
+                    if (availableSlots.length === 0) {
+                        timeContainer.innerHTML = '<p class="loading-text" style="grid-column: 1 / -1;">На жаль, на цей день всі місця зайняті.</p>';
+                        return;
+                    }
+
+                    availableSlots.forEach(slot => {
+                        const btn = document.createElement('button');
+                        btn.className = 'time-btn';
+                        btn.textContent = slot;
+                        btn.addEventListener('click', () => {
+                            document.querySelectorAll('.time-btn').forEach(b => b.classList.remove('selected'));
+                            btn.classList.add('selected');
+                            state.booking.time = slot;
+                            updateBookButton();
+                        });
+                        timeContainer.appendChild(btn);
+                    });
+
+                } catch (err) {
+                    console.error("Помилка завантаження слотів:", err);
+                    timeContainer.innerHTML = '<p class="loading-text" style="grid-column: 1 / -1;">Помилка завантаження розкладу. Спробуйте пізніше.</p>';
+                }
+            }
 
             function updateBookButton() {
                 bookBtn.disabled = !(state.booking.date && state.booking.time);
             }
 
             function resetBooking() {
-                state.booking = { type: null, teacherId: null, teacherName: null, date: null, time: null };
-                document.querySelectorAll('.date-btn').forEach((b, i) => {
-                    if (i === 0) {
-                        b.classList.add('selected');
-                        state.booking.date = b.dataset.date;
-                    } else {
-                        b.classList.remove('selected');
-                    }
-                });
-                document.querySelectorAll('.time-btn').forEach(t => t.classList.remove('selected'));
-                updateBookButton();
+                state.booking = { type: null, resourceId: null, teacherName: null, date: null, time: null };
             }
 
-            bookBtn.addEventListener('click', () => {
-                const { type, teacherName, date, time } = state.booking;
-                const serviceName = type === 'lesson' ? 'Урок гри на барабанах' : 'Оренда студії';
-                
-                let msg = `✅ Бронювання успішне!\n\nПослуга: ${serviceName}\n`;
-                if (type === 'lesson') msg += `Викладач: ${teacherName}\n`;
-                msg += `Дата: ${date}\nЧас: ${time}`;
-                
-                alert(msg);
-                
-                state.history = ['screen-services'];
-                Object.values(screens).forEach(screen => screen.classList.remove('active'));
-                screens['screen-services'].classList.add('active');
-                resetBooking();
-                window.scrollTo(0, 0);
-            });
+            // --- Кнопка "Забронювати" ---
+            async function createBooking() {
+                bookBtn.disabled = true;
+                bookBtn.textContent = 'Бронюємо...';
 
-            // Ініціалізація
-            generateDates();
+                const { date, time, resourceId } = state.booking;
+
+                try {
+                    const { error } = await supabaseClient
+                        .from('bookings')
+                        .insert([
+                            {
+                                booking_date: date,
+                                start_time: time,
+                                resource_id: resourceId,
+                                status: 'confirmed'
+                            }
+                        ]);
+
+                    if (error) throw error;
+
+                    alert("Успішно заброньовано!");
+                    
+                    // Повернення на головний екран
+                    state.history = ['screen-services'];
+                    Object.values(screens).forEach(screen => screen.classList.remove('active'));
+                    screens['screen-services'].classList.add('active');
+                    resetBooking();
+                    window.scrollTo(0, 0);
+
+                } catch (err) {
+                    console.error("Помилка бронювання:", err);
+                    alert("Помилка бронювання. Спробуйте ще раз.");
+                } finally {
+                    bookBtn.textContent = 'Забронювати';
+                    updateBookButton();
+                }
+            }
+
+            bookBtn.addEventListener('click', createBooking);
         });
     </script>
 </body>
