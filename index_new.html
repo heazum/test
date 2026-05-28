@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Запис на послуги</title>
+    <link rel="stylesheet" href="style_new.css">
+</head>
+<body>
+    <div id="app">
+        <!-- Екран 1: Вибір послуги -->
+        <section id="screen-services" class="screen active">
+            <header class="main-header">
+                <div class="logo-placeholder">
+                    <span>LOGO</span>
+                </div>
+                <h1>Привіт!<br>Оберіть послугу</h1>
+            </header>
+            
+            <div class="services-container">
+                <div class="horizontal-scroll">
+                    <!-- Картка: Урок -->
+                    <div class="card service-card" data-type="lesson" data-name="Урок гри на барабанах">
+                        <div class="card-image bg-gradient-1">
+                            🥁
+                        </div>
+                        <div class="card-content">
+                            <h3>Урок гри на барабанах</h3>
+                            <p>Індивідуальне заняття</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Картка: Оренда -->
+                    <div class="card service-card" data-type="rent" data-name="Оренда студії">
+                        <div class="card-image bg-gradient-2">
+                            🎙️
+                        </div>
+                        <div class="card-content">
+                            <h3>Оренда студії</h3>
+                            <p>Репетиційна база, 1 година</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Екран 2: Вибір спеціаліста -->
+        <section id="screen-specialists" class="screen">
+            <header class="nav-header">
+                <div class="header-top">
+                    <button class="back-btn">
+                        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M15.28 5.22a.75.75 0 0 1 0 1.06L9.56 12l5.72 5.72a.75.75 0 0 1-1.06 1.06l-6.25-6.25a.75.75 0 0 1 0-1.06l6.25-6.25a.75.75 0 0 1 1.06 0Z"/>
+                        </svg> Назад
+                    </button>
+                </div>
+                <h2>Оберіть викладача</h2>
+            </header>
+            
+            <div class="specialists-list">
+                <!-- Викладач 1 -->
+                <div class="card specialist-card" data-name="Олександр" data-photo="https://i.pravatar.cc/150?img=11">
+                    <img src="https://i.pravatar.cc/150?img=11" alt="Олександр" class="avatar">
+                    <div class="card-content">
+                        <h3>Олександр</h3>
+                        <p>Досвід: 5 років</p>
+                    </div>
+                </div>
+                <!-- Викладач 2 -->
+                <div class="card specialist-card" data-name="Марія" data-photo="https://i.pravatar.cc/150?img=5">
+                    <img src="https://i.pravatar.cc/150?img=5" alt="Марія" class="avatar">
+                    <div class="card-content">
+                        <h3>Марія</h3>
+                        <p>Досвід: 8 років</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Екран 3: Вибір дати та часу -->
+        <section id="screen-datetime" class="screen">
+            <header class="nav-header sticky-header">
+                <div class="header-top">
+                    <button class="back-btn">
+                        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M15.28 5.22a.75.75 0 0 1 0 1.06L9.56 12l5.72 5.72a.75.75 0 0 1-1.06 1.06l-6.25-6.25a.75.75 0 0 1 0-1.06l6.25-6.25a.75.75 0 0 1 1.06 0Z"/>
+                        </svg> Назад
+                    </button>
+                </div>
+                <div class="booking-summary" id="booking-summary">
+                    <!-- Заповнюється динамічно через JS -->
+                </div>
+            </header>
+            
+            <div class="datetime-container">
+                <h3>Оберіть дату</h3>
+                <div class="horizontal-scroll dates-scroll" id="dates-container">
+                    <!-- Заповнюється динамічно через JS -->
+                </div>
+
+                <h3>Оберіть час</h3>
+                <div class="time-grid" id="time-container">
+                    <button class="time-btn" disabled>10:00</button>
+                    <button class="time-btn">11:00</button>
+                    <button class="time-btn">12:00</button>
+                    <button class="time-btn">13:00</button>
+                    <button class="time-btn" disabled>14:00</button>
+                    <button class="time-btn">15:00</button>
+                    <button class="time-btn">16:00</button>
+                    <button class="time-btn">17:00</button>
+                    <button class="time-btn">18:00</button>
+                </div>
+            </div>
+
+            <div class="footer-action">
+                <button id="book-btn" class="primary-btn" disabled>Забронювати</button>
+            </div>
+        </section>
+    </div>
+
+    <!-- JS Логіка -->
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const state = {
+                history: ['screen-services'],
+                booking: {
+                    serviceType: null,
+                    serviceName: null,
+                    specialistName: null,
+                    specialistPhoto: null,
+                    date: null,
+                    time: null
+                }
+            };
+
+            const screens = {
+                'screen-services': document.getElementById('screen-services'),
+                'screen-specialists': document.getElementById('screen-specialists'),
+                'screen-datetime': document.getElementById('screen-datetime')
+            };
+
+            const bookBtn = document.getElementById('book-btn');
+            const bookingSummary = document.getElementById('booking-summary');
+            const datesContainer = document.getElementById('dates-container');
+
+            // Навігація вперед
+            function navigateTo(screenId) {
+                Object.values(screens).forEach(screen => screen.classList.remove('active'));
+                screens[screenId].classList.add('active');
+                
+                if (state.history[state.history.length - 1] !== screenId) {
+                    state.history.push(screenId);
+                }
+                window.scrollTo(0, 0);
+            }
+
+            // Навігація назад
+            function goBack() {
+                if (state.history.length > 1) {
+                    state.history.pop();
+                    const previousScreenId = state.history[state.history.length - 1];
+                    
+                    Object.values(screens).forEach(screen => screen.classList.remove('active'));
+                    screens[previousScreenId].classList.add('active');
+                    
+                    // Якщо повернулись на головну, скидаємо стан
+                    if (previousScreenId === 'screen-services') {
+                        resetBooking();
+                    }
+                }
+            }
+
+            document.querySelectorAll('.back-btn').forEach(btn => {
+                btn.addEventListener('click', goBack);
+            });
+
+            // Вибір послуги
+            document.querySelectorAll('.service-card').forEach(card => {
+                card.addEventListener('click', () => {
+                    const type = card.dataset.type;
+                    const name = card.dataset.name;
+                    state.booking.serviceType = type;
+                    state.booking.serviceName = name;
+
+                    if (type === 'lesson') {
+                        navigateTo('screen-specialists');
+                    } else {
+                        // Якщо оренда - пропускаємо викладачів
+                        state.booking.specialistName = null;
+                        state.booking.specialistPhoto = null;
+                        updateSummary();
+                        navigateTo('screen-datetime');
+                    }
+                });
+            });
+
+            // Вибір спеціаліста
+            document.querySelectorAll('.specialist-card').forEach(card => {
+                card.addEventListener('click', () => {
+                    state.booking.specialistName = card.dataset.name;
+                    state.booking.specialistPhoto = card.dataset.photo;
+                    updateSummary();
+                    navigateTo('screen-datetime');
+                });
+            });
+
+            // Оновлення шапки на 3 екрані
+            function updateSummary() {
+                if (state.booking.serviceType === 'lesson') {
+                    bookingSummary.innerHTML = `
+                        <img src="${state.booking.specialistPhoto}" alt="${state.booking.specialistName}" class="summary-avatar">
+                        <div class="summary-details">
+                            <h4>${state.booking.serviceName}</h4>
+                            <p>Викладач: ${state.booking.specialistName}</p>
+                        </div>
+                    `;
+                } else {
+                    bookingSummary.innerHTML = `
+                        <div class="summary-details">
+                            <h4>${state.booking.serviceName}</h4>
+                            <p>Вибір дати та часу</p>
+                        </div>
+                    `;
+                }
+            }
+
+            // Генерація дат (на 14 днів вперед)
+            function generateDates() {
+                const today = new Date();
+                const days = ['Нд', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
+                let html = '';
+                
+                for (let i = 0; i < 14; i++) {
+                    const d = new Date(today);
+                    d.setDate(today.getDate() + i);
+                    const dayName = days[d.getDay()];
+                    const dayNumber = d.getDate();
+                    
+                    // Формат дати: YYYY-MM-DD
+                    const dateObj = new Date(d.getTime() - (d.getTimezoneOffset() * 60000));
+                    const fullDate = dateObj.toISOString().split('T')[0];
+                    
+                    const isSelected = i === 0 ? 'selected' : '';
+                    if (i === 0) state.booking.date = fullDate; // Сьогоднішня дата за замовчуванням
+                    
+                    html += `
+                        <button class="date-btn ${isSelected}" data-date="${fullDate}">
+                            <span class="day-name">${dayName}</span>
+                            <span class="day-number">${dayNumber}</span>
+                        </button>
+                    `;
+                }
+                datesContainer.innerHTML = html;
+
+                // Клік по даті
+                document.querySelectorAll('.date-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        document.querySelectorAll('.date-btn').forEach(b => b.classList.remove('selected'));
+                        const target = e.currentTarget;
+                        target.classList.add('selected');
+                        state.booking.date = target.dataset.date;
+                        
+                        // Скидаємо час при зміні дати
+                        state.booking.time = null;
+                        document.querySelectorAll('.time-btn').forEach(t => t.classList.remove('selected'));
+                        updateBookButton();
+                    });
+                });
+            }
+
+            // Вибір часу
+            document.querySelectorAll('.time-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    if (e.currentTarget.disabled) return;
+                    document.querySelectorAll('.time-btn').forEach(b => b.classList.remove('selected'));
+                    const target = e.currentTarget;
+                    target.classList.add('selected');
+                    state.booking.time = target.textContent.trim();
+                    updateBookButton();
+                });
+            });
+
+            // Активація кнопки бронювання
+            function updateBookButton() {
+                bookBtn.disabled = !(state.booking.date && state.booking.time);
+            }
+
+            // Скидання вибору
+            function resetBooking() {
+                state.booking = { serviceType: null, serviceName: null, specialistName: null, specialistPhoto: null, date: null, time: null };
+                document.querySelectorAll('.date-btn').forEach((b, i) => {
+                    if (i === 0) {
+                        b.classList.add('selected');
+                        state.booking.date = b.dataset.date;
+                    } else {
+                        b.classList.remove('selected');
+                    }
+                });
+                document.querySelectorAll('.time-btn').forEach(t => t.classList.remove('selected'));
+                updateBookButton();
+            }
+
+            // Дія на кнопку "Забронювати"
+            bookBtn.addEventListener('click', () => {
+                const { serviceName, specialistName, date, time } = state.booking;
+                let msg = `✅ Бронювання успішне!\n\nПослуга: ${serviceName}\n`;
+                if (specialistName) msg += `Викладач: ${specialistName}\n`;
+                msg += `Дата: ${date}\nЧас: ${time}`;
+                
+                alert(msg); // Тут має бути відправка даних в Telegram WebApp API
+                
+                // Повертаємось на головну після бронювання
+                state.history = ['screen-services'];
+                Object.values(screens).forEach(screen => screen.classList.remove('active'));
+                screens['screen-services'].classList.add('active');
+                resetBooking();
+                window.scrollTo(0, 0);
+            });
+
+            // Ініціалізація
+            generateDates();
+        });
+    </script>
+</body>
+</html>
