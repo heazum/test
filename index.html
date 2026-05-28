@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Запис на послуги</title>
     <link rel="stylesheet" href="style.css">
+    <!-- Підключення Supabase CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
     <div id="app">
@@ -18,28 +20,9 @@
             </header>
             
             <div class="services-container">
-                <div class="horizontal-scroll">
-                    <!-- Картка: Урок -->
-                    <div class="card service-card" data-type="lesson" data-name="Урок гри на барабанах">
-                        <div class="card-image bg-gradient-1">
-                            🥁
-                        </div>
-                        <div class="card-content">
-                            <h3>Урок гри на барабанах</h3>
-                            <p>Індивідуальне заняття</p>
-                        </div>
-                    </div>
-                    
-                    <!-- Картка: Оренда -->
-                    <div class="card service-card" data-type="rent" data-name="Оренда студії">
-                        <div class="card-image bg-gradient-2">
-                            🎙️
-                        </div>
-                        <div class="card-content">
-                            <h3>Оренда студії</h3>
-                            <p>Репетиційна база, 1 година</p>
-                        </div>
-                    </div>
+                <!-- Вертикальний список для динамічних карток -->
+                <div class="services-list" id="services-list">
+                    <p class="loading-text">Завантаження...</p>
                 </div>
             </div>
         </section>
@@ -58,7 +41,6 @@
             </header>
             
             <div class="specialists-list">
-                <!-- Викладач 1 -->
                 <div class="card specialist-card" data-name="Олександр" data-photo="https://i.pravatar.cc/150?img=11">
                     <img src="https://i.pravatar.cc/150?img=11" alt="Олександр" class="avatar">
                     <div class="card-content">
@@ -66,7 +48,6 @@
                         <p>Досвід: 5 років</p>
                     </div>
                 </div>
-                <!-- Викладач 2 -->
                 <div class="card specialist-card" data-name="Марія" data-photo="https://i.pravatar.cc/150?img=5">
                     <img src="https://i.pravatar.cc/150?img=5" alt="Марія" class="avatar">
                     <div class="card-content">
@@ -88,14 +69,14 @@
                     </button>
                 </div>
                 <div class="booking-summary" id="booking-summary">
-                    <!-- Заповнюється динамічно через JS -->
+                    <!-- Заповнюється динамічно -->
                 </div>
             </header>
             
             <div class="datetime-container">
                 <h3>Оберіть дату</h3>
                 <div class="horizontal-scroll dates-scroll" id="dates-container">
-                    <!-- Заповнюється динамічно через JS -->
+                    <!-- Заповнюється динамічно -->
                 </div>
 
                 <h3>Оберіть час</h3>
@@ -121,9 +102,19 @@
     <!-- JS Логіка -->
     <script>
         document.addEventListener('DOMContentLoaded', () => {
+            // Налаштування Supabase
+            const supabaseUrl = ''; // Вставте ваш Supabase URL
+            const supabaseKey = ''; // Вставте ваш Supabase Anon Key
+            
+            let supabaseClient = null;
+            if (supabaseUrl && supabaseKey) {
+                supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
+            }
+
             const state = {
                 history: ['screen-services'],
                 booking: {
+                    serviceId: null,
                     serviceType: null,
                     serviceName: null,
                     specialistName: null,
@@ -142,8 +133,77 @@
             const bookBtn = document.getElementById('book-btn');
             const bookingSummary = document.getElementById('booking-summary');
             const datesContainer = document.getElementById('dates-container');
+            const listContainer = document.getElementById('services-list');
 
-            // Навігація вперед
+            // --- Асинхронне завантаження послуг ---
+            async function loadServices() {
+                if (!supabaseClient) {
+                    listContainer.innerHTML = '<p class="loading-text">Будь ласка, вкажіть Supabase URL та Key у коді.</p>';
+                    return;
+                }
+
+                try {
+                    const { data: services, error } = await supabaseClient.from('services').select('*');
+                    
+                    if (error) throw error;
+
+                    listContainer.innerHTML = ''; // Очищаємо текст "Завантаження..."
+
+                    if (!services || services.length === 0) {
+                        listContainer.innerHTML = '<p class="loading-text">Послуги не знайдено.</p>';
+                        return;
+                    }
+
+                    services.forEach(service => {
+                        const name = service.name || 'Невідома послуга';
+                        // Перевіряємо чи це оренда
+                        const isRent = name.toLowerCase().includes('оренда');
+                        const type = isRent ? 'rent' : 'lesson';
+                        
+                        // Дефолтні значення, якщо в базі відсутні поля
+                        const icon = service.icon || (isRent ? '🎙️' : '🥁'); 
+                        const description = service.description || (isRent ? 'Оренда приміщення' : 'Індивідуальне заняття');
+
+                        const card = document.createElement('div');
+                        card.className = 'card service-card';
+                        card.dataset.type = type;
+                        card.dataset.id = service.id;
+                        card.dataset.name = name;
+
+                        card.innerHTML = `
+                            <div class="service-icon">${icon}</div>
+                            <div class="service-content">
+                                <h3>${name}</h3>
+                                <p>${description}</p>
+                            </div>
+                        `;
+
+                        // Логіка кліку (маршрутизація)
+                        card.addEventListener('click', () => {
+                            state.booking.serviceId = service.id;
+                            state.booking.serviceType = type;
+                            state.booking.serviceName = name;
+
+                            if (type === 'lesson') {
+                                navigateTo('screen-specialists');
+                            } else {
+                                state.booking.specialistName = null;
+                                state.booking.specialistPhoto = null;
+                                updateSummary();
+                                navigateTo('screen-datetime');
+                            }
+                        });
+                        
+                        listContainer.appendChild(card);
+                    });
+
+                } catch (err) {
+                    console.error("Помилка завантаження:", err);
+                    listContainer.innerHTML = '<p class="loading-text">Помилка завантаження послуг. Перевірте ключі та підключення до мережі.</p>';
+                }
+            }
+
+            // --- Навігація ---
             function navigateTo(screenId) {
                 Object.values(screens).forEach(screen => screen.classList.remove('active'));
                 screens[screenId].classList.add('active');
@@ -154,7 +214,6 @@
                 window.scrollTo(0, 0);
             }
 
-            // Навігація назад
             function goBack() {
                 if (state.history.length > 1) {
                     state.history.pop();
@@ -163,7 +222,6 @@
                     Object.values(screens).forEach(screen => screen.classList.remove('active'));
                     screens[previousScreenId].classList.add('active');
                     
-                    // Якщо повернулись на головну, скидаємо стан
                     if (previousScreenId === 'screen-services') {
                         resetBooking();
                     }
@@ -172,26 +230,6 @@
 
             document.querySelectorAll('.back-btn').forEach(btn => {
                 btn.addEventListener('click', goBack);
-            });
-
-            // Вибір послуги
-            document.querySelectorAll('.service-card').forEach(card => {
-                card.addEventListener('click', () => {
-                    const type = card.dataset.type;
-                    const name = card.dataset.name;
-                    state.booking.serviceType = type;
-                    state.booking.serviceName = name;
-
-                    if (type === 'lesson') {
-                        navigateTo('screen-specialists');
-                    } else {
-                        // Якщо оренда - пропускаємо викладачів
-                        state.booking.specialistName = null;
-                        state.booking.specialistPhoto = null;
-                        updateSummary();
-                        navigateTo('screen-datetime');
-                    }
-                });
             });
 
             // Вибір спеціаліста
@@ -224,7 +262,7 @@
                 }
             }
 
-            // Генерація дат (на 14 днів вперед)
+            // --- Генерація дат та часу ---
             function generateDates() {
                 const today = new Date();
                 const days = ['Нд', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
@@ -236,12 +274,11 @@
                     const dayName = days[d.getDay()];
                     const dayNumber = d.getDate();
                     
-                    // Формат дати: YYYY-MM-DD
                     const dateObj = new Date(d.getTime() - (d.getTimezoneOffset() * 60000));
                     const fullDate = dateObj.toISOString().split('T')[0];
                     
                     const isSelected = i === 0 ? 'selected' : '';
-                    if (i === 0) state.booking.date = fullDate; // Сьогоднішня дата за замовчуванням
+                    if (i === 0) state.booking.date = fullDate;
                     
                     html += `
                         <button class="date-btn ${isSelected}" data-date="${fullDate}">
@@ -252,7 +289,6 @@
                 }
                 datesContainer.innerHTML = html;
 
-                // Клік по даті
                 document.querySelectorAll('.date-btn').forEach(btn => {
                     btn.addEventListener('click', (e) => {
                         document.querySelectorAll('.date-btn').forEach(b => b.classList.remove('selected'));
@@ -260,7 +296,6 @@
                         target.classList.add('selected');
                         state.booking.date = target.dataset.date;
                         
-                        // Скидаємо час при зміні дати
                         state.booking.time = null;
                         document.querySelectorAll('.time-btn').forEach(t => t.classList.remove('selected'));
                         updateBookButton();
@@ -268,7 +303,6 @@
                 });
             }
 
-            // Вибір часу
             document.querySelectorAll('.time-btn').forEach(btn => {
                 btn.addEventListener('click', (e) => {
                     if (e.currentTarget.disabled) return;
@@ -280,14 +314,12 @@
                 });
             });
 
-            // Активація кнопки бронювання
             function updateBookButton() {
                 bookBtn.disabled = !(state.booking.date && state.booking.time);
             }
 
-            // Скидання вибору
             function resetBooking() {
-                state.booking = { serviceType: null, serviceName: null, specialistName: null, specialistPhoto: null, date: null, time: null };
+                state.booking = { serviceId: null, serviceType: null, serviceName: null, specialistName: null, specialistPhoto: null, date: null, time: null };
                 document.querySelectorAll('.date-btn').forEach((b, i) => {
                     if (i === 0) {
                         b.classList.add('selected');
@@ -300,16 +332,15 @@
                 updateBookButton();
             }
 
-            // Дія на кнопку "Забронювати"
+            // Бронювання
             bookBtn.addEventListener('click', () => {
                 const { serviceName, specialistName, date, time } = state.booking;
                 let msg = `✅ Бронювання успішне!\n\nПослуга: ${serviceName}\n`;
                 if (specialistName) msg += `Викладач: ${specialistName}\n`;
                 msg += `Дата: ${date}\nЧас: ${time}`;
                 
-                alert(msg); // Тут має бути відправка даних в Telegram WebApp API
+                alert(msg);
                 
-                // Повертаємось на головну після бронювання
                 state.history = ['screen-services'];
                 Object.values(screens).forEach(screen => screen.classList.remove('active'));
                 screens['screen-services'].classList.add('active');
@@ -317,8 +348,9 @@
                 window.scrollTo(0, 0);
             });
 
-            // Ініціалізація
+            // Старт додатку
             generateDates();
+            loadServices();
         });
     </script>
 </body>
