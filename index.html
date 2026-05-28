@@ -10,7 +10,7 @@
 </head>
 <body>
     <div id="app">
-        <!-- Екран 1: Вибір послуги -->
+        <!-- Екран 1: Вибір послуги (Статичний) -->
         <section id="screen-services" class="screen active">
             <header class="main-header">
                 <div class="logo-placeholder">
@@ -20,14 +20,28 @@
             </header>
             
             <div class="services-container">
-                <!-- Вертикальний список для динамічних карток -->
                 <div class="services-list" id="services-list">
-                    <p class="loading-text">Завантаження...</p>
+                    <!-- Статичні картки -->
+                    <div class="card service-card" data-type="lesson">
+                        <div class="service-icon">🥁</div>
+                        <div class="service-content">
+                            <h3>Урок / Навчання</h3>
+                            <p>Індивідуальне заняття з викладачем</p>
+                        </div>
+                    </div>
+                    
+                    <div class="card service-card" data-type="rent">
+                        <div class="service-icon">🎙️</div>
+                        <div class="service-content">
+                            <h3>Оренда студії</h3>
+                            <p>Репетиційна база, самостійна робота</p>
+                        </div>
+                    </div>
                 </div>
             </div>
         </section>
 
-        <!-- Екран 2: Вибір спеціаліста -->
+        <!-- Екран 2: Вибір спеціаліста (Динамічний, тільки для уроку) -->
         <section id="screen-specialists" class="screen">
             <header class="nav-header">
                 <div class="header-top">
@@ -40,25 +54,13 @@
                 <h2>Оберіть викладача</h2>
             </header>
             
-            <div class="specialists-list">
-                <div class="card specialist-card" data-name="Олександр" data-photo="https://i.pravatar.cc/150?img=11">
-                    <img src="https://i.pravatar.cc/150?img=11" alt="Олександр" class="avatar">
-                    <div class="card-content">
-                        <h3>Олександр</h3>
-                        <p>Досвід: 5 років</p>
-                    </div>
-                </div>
-                <div class="card specialist-card" data-name="Марія" data-photo="https://i.pravatar.cc/150?img=5">
-                    <img src="https://i.pravatar.cc/150?img=5" alt="Марія" class="avatar">
-                    <div class="card-content">
-                        <h3>Марія</h3>
-                        <p>Досвід: 8 років</p>
-                    </div>
-                </div>
+            <!-- Контейнер для викладачів (стилізовано як вертикальний список) -->
+            <div class="services-list" id="teachers-list">
+                <p class="loading-text">Завантаження викладачів...</p>
             </div>
         </section>
 
-        <!-- Екран 3: Вибір дати та часу -->
+        <!-- Екран 3: Вибір дати та часу (Статичні заглушки) -->
         <section id="screen-datetime" class="screen">
             <header class="nav-header sticky-header">
                 <div class="header-top">
@@ -76,11 +78,12 @@
             <div class="datetime-container">
                 <h3>Оберіть дату</h3>
                 <div class="horizontal-scroll dates-scroll" id="dates-container">
-                    <!-- Заповнюється динамічно -->
+                    <!-- Динамічні дати генерує JS -->
                 </div>
 
                 <h3>Оберіть час</h3>
                 <div class="time-grid" id="time-container">
+                    <!-- Статичні слоти -->
                     <button class="time-btn" disabled>10:00</button>
                     <button class="time-btn">11:00</button>
                     <button class="time-btn">12:00</button>
@@ -102,9 +105,11 @@
     <!-- JS Логіка -->
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            // Налаштування Supabase
-            const supabaseUrl = 'https://whnuwjzqqejcbjmckdgv.supabase.co'; // Вставте ваш Supabase URL
+ const supabaseUrl = 'https://whnuwjzqqejcbjmckdgv.supabase.co'; // Вставте ваш Supabase URL
+
             const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndobnV3anpxcWVqY2JqbWNrZGd2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0ODc3MjIsImV4cCI6MjA5NTA2MzcyMn0.zHxGPSX6QYzCC0UVVSiWZAXqVHPrrcK8CwTUja6teds'; // Вставте ваш Supabase Anon Key
+
+            
             
             let supabaseClient = null;
             if (supabaseUrl && supabaseKey) {
@@ -114,11 +119,9 @@
             const state = {
                 history: ['screen-services'],
                 booking: {
-                    serviceId: null,
-                    serviceType: null,
-                    serviceName: null,
-                    specialistName: null,
-                    specialistPhoto: null,
+                    type: null,
+                    teacherId: null,
+                    teacherName: null,
                     date: null,
                     time: null
                 }
@@ -133,75 +136,6 @@
             const bookBtn = document.getElementById('book-btn');
             const bookingSummary = document.getElementById('booking-summary');
             const datesContainer = document.getElementById('dates-container');
-            const listContainer = document.getElementById('services-list');
-
-            // --- Асинхронне завантаження послуг ---
-            async function loadServices() {
-                if (!supabaseClient) {
-                    listContainer.innerHTML = '<p class="loading-text">Будь ласка, вкажіть Supabase URL та Key у коді.</p>';
-                    return;
-                }
-
-                try {
-                    const { data: services, error } = await supabaseClient.from('services').select('*');
-                    
-                    if (error) throw error;
-
-                    listContainer.innerHTML = ''; // Очищаємо текст "Завантаження..."
-
-                    if (!services || services.length === 0) {
-                        listContainer.innerHTML = '<p class="loading-text">Послуги не знайдено.</p>';
-                        return;
-                    }
-
-                    services.forEach(service => {
-                        const name = service.name || 'Невідома послуга';
-                        // Перевіряємо чи це оренда
-                        const isRent = name.toLowerCase().includes('оренда');
-                        const type = isRent ? 'rent' : 'lesson';
-                        
-                        // Дефолтні значення, якщо в базі відсутні поля
-                        const icon = service.icon || (isRent ? '🎙️' : '🥁'); 
-                        const description = service.description || (isRent ? 'Оренда приміщення' : 'Індивідуальне заняття');
-
-                        const card = document.createElement('div');
-                        card.className = 'card service-card';
-                        card.dataset.type = type;
-                        card.dataset.id = service.id;
-                        card.dataset.name = name;
-
-                        card.innerHTML = `
-                            <div class="service-icon">${icon}</div>
-                            <div class="service-content">
-                                <h3>${name}</h3>
-                                <p>${description}</p>
-                            </div>
-                        `;
-
-                        // Логіка кліку (маршрутизація)
-                        card.addEventListener('click', () => {
-                            state.booking.serviceId = service.id;
-                            state.booking.serviceType = type;
-                            state.booking.serviceName = name;
-
-                            if (type === 'lesson') {
-                                navigateTo('screen-specialists');
-                            } else {
-                                state.booking.specialistName = null;
-                                state.booking.specialistPhoto = null;
-                                updateSummary();
-                                navigateTo('screen-datetime');
-                            }
-                        });
-                        
-                        listContainer.appendChild(card);
-                    });
-
-                } catch (err) {
-                    console.error("Помилка завантаження:", err);
-                    listContainer.innerHTML = '<p class="loading-text">Помилка завантаження послуг. Перевірте ключі та підключення до мережі.</p>';
-                }
-            }
 
             // --- Навігація ---
             function navigateTo(screenId) {
@@ -232,37 +166,92 @@
                 btn.addEventListener('click', goBack);
             });
 
-            // Вибір спеціаліста
-            document.querySelectorAll('.specialist-card').forEach(card => {
+            // --- Логіка Екрану 1 (Вибір типу) ---
+            document.querySelectorAll('#screen-services .service-card').forEach(card => {
                 card.addEventListener('click', () => {
-                    state.booking.specialistName = card.dataset.name;
-                    state.booking.specialistPhoto = card.dataset.photo;
-                    updateSummary();
-                    navigateTo('screen-datetime');
+                    const type = card.dataset.type;
+                    state.booking.type = type;
+
+                    if (type === 'lesson') {
+                        loadTeachers();
+                        navigateTo('screen-specialists');
+                    } else if (type === 'rent') {
+                        state.booking.teacherId = null;
+                        state.booking.teacherName = null;
+                        updateSummary();
+                        navigateTo('screen-datetime');
+                    }
                 });
             });
 
-            // Оновлення шапки на 3 екрані
+            // --- Логіка Екрану 2 (Завантаження викладачів) ---
+            async function loadTeachers() {
+                const teachersList = document.getElementById('teachers-list');
+                teachersList.innerHTML = '<p class="loading-text">Завантаження викладачів...</p>';
+
+                if (!supabaseClient) {
+                    teachersList.innerHTML = '<p class="loading-text">Будь ласка, вкажіть Supabase ключі.</p>';
+                    return;
+                }
+
+                try {
+                    const { data: teachers, error } = await supabaseClient.from('teachers').select('*');
+                    
+                    if (error) throw error;
+                    teachersList.innerHTML = '';
+
+                    if (!teachers || teachers.length === 0) {
+                        teachersList.innerHTML = '<p class="loading-text">Викладачів не знайдено.</p>';
+                        return;
+                    }
+
+                    teachers.forEach(teacher => {
+                        const card = document.createElement('div');
+                        card.className = 'card service-card'; 
+                        card.dataset.id = teacher.id;
+
+                        card.innerHTML = `
+                            <div class="teacher-avatar"></div>
+                            <div class="service-content">
+                                <h3>${teacher.name || 'Без імені'}</h3>
+                                <p>${teacher.specialty || 'Викладач'}</p>
+                            </div>
+                        `;
+
+                        card.addEventListener('click', () => {
+                            state.booking.teacherId = teacher.id;
+                            state.booking.teacherName = teacher.name || 'Без імені';
+                            updateSummary();
+                            navigateTo('screen-datetime');
+                        });
+                        
+                        teachersList.appendChild(card);
+                    });
+                } catch (err) {
+                    console.error("Помилка завантаження викладачів:", err);
+                    teachersList.innerHTML = '<p class="loading-text">Помилка завантаження. Перевірте мережу та таблицю "teachers".</p>';
+                }
+            }
+
+            // --- Логіка Екрану 3 ---
             function updateSummary() {
-                if (state.booking.serviceType === 'lesson') {
+                if (state.booking.type === 'lesson') {
                     bookingSummary.innerHTML = `
-                        <img src="${state.booking.specialistPhoto}" alt="${state.booking.specialistName}" class="summary-avatar">
                         <div class="summary-details">
-                            <h4>${state.booking.serviceName}</h4>
-                            <p>Викладач: ${state.booking.specialistName}</p>
+                            <h4>Урок. Викладач: ${state.booking.teacherName}</h4>
+                            <p>Вибір дати та часу</p>
                         </div>
                     `;
                 } else {
                     bookingSummary.innerHTML = `
                         <div class="summary-details">
-                            <h4>${state.booking.serviceName}</h4>
+                            <h4>Оренда студії</h4>
                             <p>Вибір дати та часу</p>
                         </div>
                     `;
                 }
             }
 
-            // --- Генерація дат та часу ---
             function generateDates() {
                 const today = new Date();
                 const days = ['Нд', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
@@ -319,7 +308,7 @@
             }
 
             function resetBooking() {
-                state.booking = { serviceId: null, serviceType: null, serviceName: null, specialistName: null, specialistPhoto: null, date: null, time: null };
+                state.booking = { type: null, teacherId: null, teacherName: null, date: null, time: null };
                 document.querySelectorAll('.date-btn').forEach((b, i) => {
                     if (i === 0) {
                         b.classList.add('selected');
@@ -332,11 +321,12 @@
                 updateBookButton();
             }
 
-            // Бронювання
             bookBtn.addEventListener('click', () => {
-                const { serviceName, specialistName, date, time } = state.booking;
+                const { type, teacherName, date, time } = state.booking;
+                const serviceName = type === 'lesson' ? 'Урок / Навчання' : 'Оренда студії';
+                
                 let msg = `✅ Бронювання успішне!\n\nПослуга: ${serviceName}\n`;
-                if (specialistName) msg += `Викладач: ${specialistName}\n`;
+                if (type === 'lesson') msg += `Викладач: ${teacherName}\n`;
                 msg += `Дата: ${date}\nЧас: ${time}`;
                 
                 alert(msg);
@@ -348,9 +338,8 @@
                 window.scrollTo(0, 0);
             });
 
-            // Старт додатку
+            // Ініціалізація
             generateDates();
-            loadServices();
         });
     </script>
 </body>
