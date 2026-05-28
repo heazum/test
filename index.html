@@ -21,11 +21,11 @@
             
             <div class="services-container">
                 <div class="services-list" id="services-list">
-                    <!-- Статичні картки -->
+                    <!-- Статичні картки послуг -->
                     <div class="card service-card" data-type="lesson">
                         <div class="service-icon">🥁</div>
                         <div class="service-content">
-                            <h3>Урок / Навчання</h3>
+                            <h3>Урок гри на барабанах</h3>
                             <p>Індивідуальне заняття з викладачем</p>
                         </div>
                     </div>
@@ -110,7 +110,6 @@
             const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndobnV3anpxcWVqY2JqbWNrZGd2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0ODc3MjIsImV4cCI6MjA5NTA2MzcyMn0.zHxGPSX6QYzCC0UVVSiWZAXqVHPrrcK8CwTUja6teds'; // Вставте ваш Supabase Anon Key
 
             
-            
             let supabaseClient = null;
             if (supabaseUrl && supabaseKey) {
                 supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
@@ -184,7 +183,7 @@
                 });
             });
 
-            // --- Логіка Екрану 2 (Завантаження викладачів) ---
+            // --- Логіка Екрану 2 (Завантаження викладачів з таблиці resources) ---
             async function loadTeachers() {
                 const teachersList = document.getElementById('teachers-list');
                 teachersList.innerHTML = '<p class="loading-text">Завантаження викладачів...</p>';
@@ -195,7 +194,12 @@
                 }
 
                 try {
-                    const { data: teachers, error } = await supabaseClient.from('teachers').select('*');
+                    // Звертаємось до таблиці resources, фільтруємо за resource_type та is_active
+                    const { data: teachers, error } = await supabaseClient
+                        .from('resources')
+                        .select('*')
+                        .eq('resource_type', 'teacher')
+                        .eq('is_active', true);
                     
                     if (error) throw error;
                     teachersList.innerHTML = '';
@@ -214,7 +218,7 @@
                             <div class="teacher-avatar"></div>
                             <div class="service-content">
                                 <h3>${teacher.name || 'Без імені'}</h3>
-                                <p>${teacher.specialty || 'Викладач'}</p>
+                                <p>Викладач</p>
                             </div>
                         `;
 
@@ -229,7 +233,7 @@
                     });
                 } catch (err) {
                     console.error("Помилка завантаження викладачів:", err);
-                    teachersList.innerHTML = '<p class="loading-text">Помилка завантаження. Перевірте мережу та таблицю "teachers".</p>';
+                    teachersList.innerHTML = '<p class="loading-text">Помилка завантаження. Перевірте мережу та таблицю "resources".</p>';
                 }
             }
 
@@ -323,7 +327,7 @@
 
             bookBtn.addEventListener('click', () => {
                 const { type, teacherName, date, time } = state.booking;
-                const serviceName = type === 'lesson' ? 'Урок / Навчання' : 'Оренда студії';
+                const serviceName = type === 'lesson' ? 'Урок гри на барабанах' : 'Оренда студії';
                 
                 let msg = `✅ Бронювання успішне!\n\nПослуга: ${serviceName}\n`;
                 if (type === 'lesson') msg += `Викладач: ${teacherName}\n`;
